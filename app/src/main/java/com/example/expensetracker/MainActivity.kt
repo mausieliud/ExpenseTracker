@@ -14,11 +14,12 @@ import androidx.navigation.compose.rememberNavController
 import com.example.expensetracker.screens.BudgetOverviewScreen
 import com.example.expensetracker.screens.BudgetSetupScreen
 import com.example.expensetracker.screens.ExpenseFormScreen
+import com.example.expensetracker.screens.ReportScreen
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.example.expensetracker.ui.viewmodel.BudgetFormViewModel
 import com.example.expensetracker.ui.viewmodel.BudgetViewModel
 import com.example.expensetracker.ui.viewmodel.ExpenseFormViewModel
-
+import com.example.expensetracker.ui.viewmodel.ReportViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,7 +40,8 @@ class MainActivity : ComponentActivity() {
                             BudgetOverviewScreen(
                                 viewModel = viewModel,
                                 navigateToAddExpense = { navController.navigate("add_expense") },
-                                navigateToBudgetSetup = { navController.navigate("budget_setup") }
+                                navigateToBudgetSetup = { navController.navigate("budget_setup") },
+                                navigateToReports = { navController.navigate("reports") }
                             )
                         }
 
@@ -58,6 +60,16 @@ class MainActivity : ComponentActivity() {
                                 factory = BudgetFormViewModel.Factory(application)
                             )
                             BudgetSetupScreen(
+                                viewModel = viewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable("reports") {
+                            val viewModel: ReportViewModel = viewModel(
+                                factory = ReportViewModel.Factory(application)
+                            )
+                            ReportScreen(
                                 viewModel = viewModel,
                                 onNavigateBack = { navController.popBackStack() }
                             )

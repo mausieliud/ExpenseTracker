@@ -12,6 +12,9 @@ interface DailyAdjustmentDao {
     @Query("SELECT * FROM daily_adjustments")
     fun getAllAdjustments(): Flow<List<DailyAdjustment>>
 
+    @Query("SELECT * FROM daily_adjustments WHERE date = :date LIMIT 1")
+    suspend fun getAdjustmentForDate(date: String): DailyAdjustment?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAdjustment(adjustment: DailyAdjustment)
 

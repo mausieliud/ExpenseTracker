@@ -20,10 +20,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun BudgetOverviewCard(
-    totalBudget: Double,
-    remainingBudget: Double,
     remainingToday: Double,
-    totalSpentToday: Double
+    totalSpentToday: Double,
+    totalBudget: Double,
+    remainingBudget: Double
 ) {
     Card(
         modifier = Modifier

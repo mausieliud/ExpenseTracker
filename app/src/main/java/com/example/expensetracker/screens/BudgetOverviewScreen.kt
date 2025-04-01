@@ -3,14 +3,17 @@ package com.example.expensetracker.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +36,13 @@ import com.example.expensetracker.components.ExpenseItem
 import com.example.expensetracker.event.BudgetEvent
 import com.example.expensetracker.ui.viewmodel.BudgetViewModel
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetOverviewScreen(
     viewModel: BudgetViewModel,
     navigateToAddExpense: () -> Unit,
-    navigateToBudgetSetup: () -> Unit
+    navigateToBudgetSetup: () -> Unit,
+    navigateToReports: () -> Unit
 ) {
     val state by viewModel.budgetState.collectAsState()
 
@@ -48,6 +51,9 @@ fun BudgetOverviewScreen(
             TopAppBar(
                 title = { Text("Budget Tracker") },
                 actions = {
+                    IconButton(onClick = navigateToReports) {
+                        Icon(Icons.Default.Favorite, contentDescription = "Reports")
+                    }
                     IconButton(onClick = navigateToBudgetSetup) {
                         Icon(Icons.Default.Settings, contentDescription = "Budget Settings")
                     }
@@ -107,11 +113,18 @@ fun BudgetOverviewScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Recent expenses
-                Text(
-                    "Recent Expenses",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Recent Expenses",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn {
                     items(state.expenses.take(10)) { expense ->

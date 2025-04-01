@@ -12,5 +12,5 @@ data class Budget(
     val remaining_budget: Double,
     val savings: Double = 0.0,
     @PrimaryKey
-    val id: Int = 1  // Only one budget record
+    val id: Long = 1  // Only one budget record
 )

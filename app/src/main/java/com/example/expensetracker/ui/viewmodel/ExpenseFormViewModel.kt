@@ -12,6 +12,7 @@ import com.example.expensetracker.state.ExpenseFormState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -27,6 +28,9 @@ class ExpenseFormViewModel(application: Application) : AndroidViewModel(applicat
     val formState: StateFlow<ExpenseFormState> = _formState.asStateFlow()
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    // Store the original expense amount when editing
+    private var originalExpenseAmount: Double = 0.0
 
     init {
         // Set default date to today
@@ -81,19 +85,29 @@ class ExpenseFormViewModel(application: Application) : AndroidViewModel(applicat
 
             if (state.isEditing) {
                 expenseDao.updateExpense(expense)
+
+                // Update the budget correctly when editing an expense
+                // We need to account for the difference between the new and original amount
+                val budget = budgetDao.getBudget().first()
+                budget?.let {
+                    val expenseDifference = amountValue - originalExpenseAmount
+                    budgetDao.updateBudget(
+                        it.copy(
+                            remaining_budget = it.remaining_budget - expenseDifference
+                        )
+                    )
+                }
             } else {
                 expenseDao.insertExpense(expense)
 
-                // Update budget remaining amount
-                budgetDao.getBudget().collect { budget ->
-                    budget?.let {
-                        budgetDao.updateBudget(
-                            it.copy(
-                                remaining_budget = it.remaining_budget - amountValue
-                            )
+                // Update budget remaining amount for new expenses
+                val budget = budgetDao.getBudget().first()
+                budget?.let {
+                    budgetDao.updateBudget(
+                        it.copy(
+                            remaining_budget = it.remaining_budget - amountValue
                         )
-                    }
-                    return@collect
+                    )
                 }
             }
 
@@ -102,6 +116,9 @@ class ExpenseFormViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setExpenseForEdit(expense: Expense) {
+        // Store the original amount for correctly updating budget later
+        originalExpenseAmount = expense.amount
+
         _formState.update {
             it.copy(
                 description = expense.description,
@@ -115,6 +132,7 @@ class ExpenseFormViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun resetForm() {
+        originalExpenseAmount = 0.0
         _formState.update {
             ExpenseFormState(date = dateFormat.format(Date()))
         }

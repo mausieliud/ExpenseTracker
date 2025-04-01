@@ -91,23 +91,46 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
             is BudgetEvent.DeleteExpense -> {
                 viewModelScope.launch {
-                    expenseDao.deleteExpense(event.expense)
+                    // Get the expense before deleting it to update the budget
+                    val expense = event.expense
+                    expenseDao.deleteExpense(expense)
+
+                    // Add the expense amount back to the remaining budget
+                    _budgetState.value.budget?.let { budget ->
+                        budgetDao.updateBudget(
+                            budget.copy(
+                                remaining_budget = budget.remaining_budget + expense.amount
+                            )
+                        )
+                    }
                 }
             }
 
             is BudgetEvent.AddDailyAdjustment -> {
                 viewModelScope.launch {
+                    // Check if there's an existing adjustment for this date
+                    val existingAdjustment = dailyAdjustmentDao.getAdjustmentForDate(event.date)
+                    val adjustmentDifference = if (existingAdjustment != null) {
+                        // If updating an existing adjustment, calculate the difference
+                        event.amount - existingAdjustment.adjustment
+                    } else {
+                        // If it's a new adjustment, use the full amount
+                        event.amount
+                    }
+
                     val adjustment = DailyAdjustment(
                         date = event.date,
                         adjustment = event.amount
                     )
                     dailyAdjustmentDao.insertAdjustment(adjustment)
 
-                    // Update remaining budget if needed
+                    // Update remaining budget correctly
+                    // For an adjustment, we SUBTRACT from the remaining budget
+                    // (positive adjustment means more money for today, less for future days)
                     _budgetState.value.budget?.let { budget ->
                         budgetDao.updateBudget(
                             budget.copy(
-                                remaining_budget = budget.remaining_budget - event.amount
+                                remaining_budget = budget.remaining_budget - adjustmentDifference
                             )
                         )
                     }
