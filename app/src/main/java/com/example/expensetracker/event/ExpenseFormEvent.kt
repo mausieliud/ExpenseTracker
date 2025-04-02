@@ -7,4 +7,5 @@ sealed class ExpenseFormEvent {
     data class DateChanged(val date: String) : ExpenseFormEvent()
     data object SaveExpense : ExpenseFormEvent()
     data object CancelEdit : ExpenseFormEvent()
+    data class AddCustomCategory(val category: String) : ExpenseFormEvent()
 }

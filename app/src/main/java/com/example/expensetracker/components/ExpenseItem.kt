@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.Color
 import com.example.expensetracker.data.entity.Expense
+import kotlin.math.abs
 
 
 @Composable
@@ -45,15 +46,7 @@ fun ExpenseItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Category indicator
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(40.dp)
-                    .background(
-                        getCategoryColor(expense.category),
-                        shape = RoundedCornerShape(4.dp)
-                    )
-            )
+            CategoryChip(expense)
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -99,7 +92,12 @@ fun getCategoryColor(category: String): Color {
         "transport" -> Color(0xFF2196F3)
         "entertainment" -> Color(0xFFFF9800)
         "bills" -> Color(0xFFE91E63)
-        else -> Color(0xFF9E9E9E)
+        else -> {
+            // Generate a consistent color based on the category string
+            val hash = category.hashCode()
+            val hue = (abs(hash) % 360).toFloat()
+            Color.hsv(hue, 0.7f, 0.8f)
+        }
     }
 }
 

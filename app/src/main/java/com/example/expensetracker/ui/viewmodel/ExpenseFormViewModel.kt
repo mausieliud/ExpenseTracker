@@ -62,6 +62,13 @@ class ExpenseFormViewModel(application: Application) : AndroidViewModel(applicat
             is ExpenseFormEvent.CancelEdit -> {
                 resetForm()
             }
+            is ExpenseFormEvent.AddCustomCategory -> {
+                val newCategories = _formState.value.categories + event.category
+                _formState.update { it.copy(
+                    categories = newCategories,
+                    category = event.category
+                ) }
+            }
         }
     }
 

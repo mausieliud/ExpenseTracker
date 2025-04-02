@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,7 +82,7 @@ fun BudgetSetupScreen(
                 onValueChange = { viewModel.onEvent(BudgetFormEvent.StartDateChanged(it)) },
                 label = { Text("Start Date (YYYY-MM-DD)") },
                 trailingIcon = {
-                    Icon(Icons.Default.DateRange, contentDescription = "Calendar")
+                    Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar")
                     // In a real app, clicking this would show a date picker
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -93,7 +94,7 @@ fun BudgetSetupScreen(
                 onValueChange = { viewModel.onEvent(BudgetFormEvent.EndDateChanged(it)) },
                 label = { Text("End Date (YYYY-MM-DD)") },
                 trailingIcon = {
-                    Icon(Icons.Default.DateRange, contentDescription = "Calendar")
+                    Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar")
                 },
                 modifier = Modifier.fillMaxWidth()
             )
