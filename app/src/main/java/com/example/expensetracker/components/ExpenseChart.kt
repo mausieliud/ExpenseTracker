@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.data.model.TimeSeriesDataPoint
+import com.example.expensetracker.roundToDecimalPlaces
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -188,7 +189,7 @@ fun ExpenseChart(
                                     color = colorScheme.outline
                                 )
                                 Text(
-                                    text = "${maxEntry.label}: ${currencyFormat.format(maxEntry.amount)}",
+                                    text = "${maxEntry.label}: Ksh.${maxEntry.amount.roundToDecimalPlaces(2)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -203,7 +204,7 @@ fun ExpenseChart(
                                     color = colorScheme.outline
                                 )
                                 Text(
-                                    text = "${minEntry.label}: ${currencyFormat.format(minEntry.amount)}",
+                                    text = "${minEntry.label}: Ksh.${minEntry.amount.roundToDecimalPlaces(2)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )

@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.expensetracker.roundToDecimalPlaces
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.min
@@ -93,7 +94,7 @@ fun CategoryDonutChart(
 
             val numberFormat = NumberFormat.getCurrencyInstance(Locale.getDefault())
             Text(
-                text = numberFormat.format(totalSpent),
+                text = "Ksh.${totalSpent.roundToDecimalPlaces(2)}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black

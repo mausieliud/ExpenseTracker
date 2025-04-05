@@ -1,5 +1,6 @@
 package com.example.expensetracker.components
 
+import BudgetProgressBar
 import androidx.compose.material3.Card
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ fun BudgetOverviewCard(
     totalBudget: Double,
     remainingBudget: Double
 ) {
+    BudgetProgressBar(totalBudget,remainingBudget)
     Card(
         modifier = Modifier
             .fillMaxWidth()
