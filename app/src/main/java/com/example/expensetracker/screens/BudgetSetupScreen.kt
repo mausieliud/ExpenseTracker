@@ -71,7 +71,7 @@ fun BudgetSetupScreen(
                 value = state.totalBudget,
                 onValueChange = { viewModel.onEvent(BudgetFormEvent.TotalBudgetChanged(it)) },
                 label = { Text("Total Budget") },
-                prefix = { Text("$") },
+                prefix = { Text("Ksh.") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -104,7 +104,7 @@ fun BudgetSetupScreen(
                 value = state.desiredSavings,
                 onValueChange = { viewModel.onEvent(BudgetFormEvent.DesiredSavingsChanged(it)) },
                 label = { Text("Savings Goal (optional)") },
-                prefix = { Text("$") },
+                prefix = { Text("Ksh.") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )

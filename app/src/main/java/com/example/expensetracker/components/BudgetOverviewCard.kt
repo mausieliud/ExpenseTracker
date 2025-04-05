@@ -48,7 +48,7 @@ fun BudgetOverviewCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Total Budget:")
-                Text("$${String.format("%.2f", totalBudget)}")
+                Text("Ksh.${String.format("%.2f", totalBudget)}")
             }
 
             Row(
@@ -57,7 +57,7 @@ fun BudgetOverviewCard(
             ) {
                 Text("Remaining Overall:")
                 Text(
-                    "$${String.format("%.2f", remainingBudget)}",
+                    "Ksh.${String.format("%.2f", remainingBudget)}",
                     color = if (remainingBudget > 0) Color.Green else Color.Red
                 )
             }
@@ -77,7 +77,7 @@ fun BudgetOverviewCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Spent Today:")
-                Text("$${String.format("%.2f", totalSpentToday)}")
+                Text("Ksh.${String.format("%.2f", totalSpentToday)}")
             }
 
             Row(
@@ -86,7 +86,7 @@ fun BudgetOverviewCard(
             ) {
                 Text("Remaining Today:")
                 Text(
-                    "$${String.format("%.2f", remainingToday)}",
+                    "Ksh.${String.format("%.2f", remainingToday)}",
                     color = if (remainingToday > 0) Color.Green else Color.Red
                 )
             }

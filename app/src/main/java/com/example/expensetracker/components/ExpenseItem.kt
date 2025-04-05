@@ -66,7 +66,7 @@ fun ExpenseItem(
 
             // Amount
             Text(
-                "$${String.format("%.2f", expense.amount)}",
+                "Ksh.${String.format("%.2f", expense.amount)}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold
             )

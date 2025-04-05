@@ -60,18 +60,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.components.CategoryBreakdownCard
+import com.example.expensetracker.components.CategoryChip
 import com.example.expensetracker.components.CategoryDonutChart
 import com.example.expensetracker.components.CategoryLegend
+import com.example.expensetracker.components.DailySpendingCard
 import com.example.expensetracker.components.ExpenseChart
 import com.example.expensetracker.components.MinMaxSpentCard
-import com.example.expensetracker.components.StatsSummaryCard
 import com.example.expensetracker.components.getCategoryColor
+import com.example.expensetracker.roundToDecimalPlaces
 import com.example.expensetracker.ui.viewmodel.ReportViewModel
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingFlat
+import androidx.compose.material.icons.filled.TrendingUp
+import com.example.expensetracker.calculateTrend
+import com.example.expensetracker.calculateWeeklyAverages
+import com.example.expensetracker.convertToDatePairs
+import com.example.expensetracker.data.entity.Expense
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,14 +248,113 @@ fun ReportScreen(
                         )
                     }
 
+                    //Spennding summary
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Spending Summary",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Total Spent:")
+                                Text(
+                                    text = "Ksh.${state.totalSpent.roundToDecimalPlaces(2)}",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Daily Average:")
+                                Text(
+                                    text = "Ksh.${state.dailyAverage.roundToDecimalPlaces(2)}",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Budget Utilization:")
+                                val budgetAmount = state.budget?.total_budget ?: 0.0
+                                val utilization = if (budgetAmount > 0) (state.totalSpent / budgetAmount * 100) else 0.0
+                                Text(
+                                    text = "${utilization.roundToDecimalPlaces(1)}%",
+                                    fontWeight = FontWeight.Bold,
+                                    color = when {
+                                        utilization > 90 -> MaterialTheme.colorScheme.error
+                                        utilization > 75 -> Color(0xFFFF9800) // Orange
+                                        else -> MaterialTheme.colorScheme.primary
+                                    }
+                                )
+                            }
+
+                            // Find the biggest expense if available
+                            val biggestExpense = state.expenses.maxByOrNull { it.amount }
+                            if (biggestExpense != null) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Largest Expense:")
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "Ksh.${biggestExpense.amount.roundToDecimalPlaces(2)}",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = biggestExpense.description,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Find most frequent category and create a dummy Expense to use with CategoryChip
+                            val categoryFrequencies = state.expenses.groupBy { it.category }
+                            val mostFrequentCategory = categoryFrequencies.maxByOrNull { it.value.size }
+
+                            if (mostFrequentCategory != null) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Most Frequent Category:")
+                                    // Use the first expense from the most frequent category to display the chip
+                                    CategoryChip(expense = mostFrequentCategory.value.first())
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Stats summary card
-                    StatsSummaryCard(
-                        totalSpent = state.totalSpent,
-                        dailyAverage = state.dailyAverage,
-                        timeRange = state.timeRange
-                    )
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -309,9 +420,14 @@ fun ReportScreen(
                             }
                         }
                     }
-                    // Add this after the CategoryBreakdownCard section in the ReportScreen
+                    DailySpendingCard(
+                        dailyTotals = state.dailySpending,
+                        dailyBudget = state.budget?.allocation_per_day ?: 0.0
+                    )
 
-// Category Visualization Card
+
+
+                    // Category Visualization Card
                     if (state.categoryBreakdown.isNotEmpty()) {
                         Card(
                             modifier = Modifier
@@ -360,44 +476,15 @@ fun ReportScreen(
                                             )
                                         }
 
-                                        // Add the Legend in a scrollable column
+                                        // Add the Legend
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
                                         ) {
-                                            Column {
-                                                Text(
-                                                    text = "Legend",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(bottom = 8.dp)
-                                                )
-
-                                                categoryTotals.forEach { (category, _) ->
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(vertical = 4.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        // Color indicator
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(16.dp)
-                                                                .clip(RoundedCornerShape(4.dp))
-                                                                .background(getCategoryColor(category))
-                                                        )
-
-                                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                                        // Category name
-                                                        Text(
-                                                            text = category,
-                                                            style = MaterialTheme.typography.bodyMedium
-                                                        )
-                                                    }
-                                                }
-                                            }
+                                            CategoryLegend(
+                                                categories = categoryTotals.map { it.first },
+                                                getCategoryColor = ::getCategoryColor
+                                            )
                                         }
                                     }
 
@@ -419,24 +506,19 @@ fun ReportScreen(
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                // Create a chip-like appearance for the category
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(16.dp))
-                                                        .background(getCategoryColor(category).copy(alpha = 0.2f))
-                                                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                                                ) {
-                                                    Text(
-                                                        text = category,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = getCategoryColor(category)
-                                                    )
-                                                }
+                                                // Creating a dummy expense for the category chip
+                                                val dummyExpense = Expense(
+                                                    id = 0,  // Use a dummy ID
+                                                    amount = 0.0,  // Use a dummy amount
+                                                    description = "",  // Empty description
+                                                    date = "",  // Empty date
+                                                    category = category  // Use the current category
+                                                )
+                                                CategoryChip(expense = dummyExpense)
 
                                                 Row {
                                                     Text(
-                                                        text = NumberFormat.getCurrencyInstance(Locale.getDefault())
-                                                            .format(total),
+                                                        text = "Ksh.${total.roundToDecimalPlaces(2)}",
                                                         fontWeight = FontWeight.Bold
                                                     )
                                                     Text(
@@ -464,9 +546,167 @@ fun ReportScreen(
                         }
                     }
 
+                    //Top expenses
+                    // Top Expenses List
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Top Expenses",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            if (state.expenses.isEmpty()) {
+                                Text(
+                                    text = "No expenses to display",
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            } else {
+                                state.expenses.sortedByDescending { it.amount }.take(10).forEach { expense ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = expense.description,
+                                                fontWeight = FontWeight.Medium,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                CategoryChip(expense = expense)
+                                                Text(
+                                                    text = expense.date,
+                                                    color = Color.Gray,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = "Ksh.${expense.amount.roundToDecimalPlaces(2)}",
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                }
+                            }
+                        }
+                    }
 
+                    //trends
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Spending Trends",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            val dailyTotals = convertToDatePairs(state.dailySpending)
+
+                            if (state.expenses.isEmpty() || dailyTotals.size < 2) {
+                                Text(
+                                    text = "Not enough data to analyze trends",
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            } else {
+                                // Calculate trend (increasing/decreasing)
+                                val trend = calculateTrend(dailyTotals)
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        when {
+                                            trend > 0 -> Icons.Default.TrendingUp
+                                            trend < 0 -> Icons.Default.TrendingDown
+                                            else -> Icons.Default.TrendingFlat
+                                        },
+                                        contentDescription = "Spending Trend",
+                                        tint = when {
+                                            trend > 0 -> MaterialTheme.colorScheme.error
+                                            trend < 0 -> Color.Green
+                                            else -> Color.Gray
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    Text(
+                                        text = when {
+                                            trend > 0.1 -> "Your spending is increasing"
+                                            trend < -0.1 -> "Your spending is decreasing"
+                                            else -> "Your spending is stable"
+                                        },
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                // Weekly Averages Section
+                                if (state.expenses.size >= 7) {
+                                    val weeklyAverages = calculateWeeklyAverages(state.expenses)
+
+                                    Text(
+                                        text = "Weekly Averages",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                    )
+
+                                    weeklyAverages.forEach { (weekStart, average) ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            val formatter = DateTimeFormatter.ofPattern("MMM dd")
+                                            Text(
+                                                text = "${weekStart.format(formatter)} - ${weekStart.plusDays(6).format(formatter)}",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                            Text(
+                                                text = "Ksh.${average.roundToDecimalPlaces(2)}",
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-
             }
 
             // Date Range Picker Dialog

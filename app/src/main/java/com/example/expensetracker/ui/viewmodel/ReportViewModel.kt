@@ -21,6 +21,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class ReportViewModel(application: Application) : AndroidViewModel(application) {
+
     private val database = BudgetDatabase.getDatabase(application)
     private val expenseDao = database.expenseDao()
 
@@ -30,9 +31,10 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val displayDateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
     private val monthYearFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-
+    private val budgetDao = database.budgetDao()
     init {
         loadReportData("This Month")
+        loadBudgetData()
     }
 
     fun loadReportData(timeRange: String) {
@@ -58,6 +60,23 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     it.copy(
                         isLoading = false,
                         error = "Error loading report data: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    // Add this function
+    private fun loadBudgetData() {
+        viewModelScope.launch {
+            try {
+                budgetDao.getBudget().collect { budget ->
+                    _reportState.update { it.copy(budget = budget) }
+                }
+            } catch (e: Exception) {
+                _reportState.update {
+                    it.copy(
+                        error = "Error loading budget data: ${e.message}"
                     )
                 }
             }
@@ -125,6 +144,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     expenses = emptyList(),
                     categoryBreakdown = emptyMap(),
                     totalSpent = 0.0,
+                    dailySpending = emptyMap(),
                     dailyAverage = 0.0,
                     timeSeriesData = emptyList(),
                     isLoading = false
@@ -147,6 +167,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             .toMap()
 
         // Calculate daily average
+        val dailySpending = calculateDailySpending(expenses)
         val startDateObj = dateFormat.parse(startDate)
         val endDateObj = dateFormat.parse(endDate)
         val daysInRange = if (startDateObj != null && endDateObj != null) {
@@ -164,6 +185,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 expenses = expenses,
                 categoryBreakdown = categoryBreakdown,
+                dailySpending = dailySpending,
                 totalSpent = totalSpent,
                 dailyAverage = dailyAverage,
                 timeSeriesData = timeSeriesData,
@@ -321,6 +343,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     expenseDate.compareTo(startDateObj) >= 0 &&
                     expenseDate.compareTo(endDateObj) <= 0
         }
+    }
+    // for daily spending card(Calculates daily spending"
+    private fun calculateDailySpending(expenses: List<Expense>): Map<String, Double> {
+        return expenses
+            .groupBy { it.date }
+            .mapValues { (_, expensesOnDay) -> expensesOnDay.sumOf { it.amount } }
+            .toSortedMap(compareByDescending { it })  // Sort by date, most recent first
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {
