@@ -1,12 +1,17 @@
 package com.example.expensetracker
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,12 +25,39 @@ import com.example.expensetracker.ui.viewmodel.BudgetFormViewModel
 import com.example.expensetracker.ui.viewmodel.BudgetViewModel
 import com.example.expensetracker.ui.viewmodel.ExpenseFormViewModel
 import com.example.expensetracker.ui.viewmodel.ReportViewModel
+import com.example.expensetracker.screens.MPesaMessageParserScreen
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val TAG = "ExpenseTracker"
+    }
+
+    // Track SMS permission state
+    private val hasSmsPermission = mutableStateOf(false)
+
+    // Permission launcher
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasSmsPermission.value = isGranted
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check for SMS permission
+        hasSmsPermission.value = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        // Request SMS permission if not granted
+        if (!hasSmsPermission.value) {
+            requestPermissionLauncher.launch(Manifest.permission.READ_SMS)
+        }
+
         setContent {
-            ExpenseTrackerTheme  {
+            ExpenseTrackerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -41,7 +73,8 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 navigateToAddExpense = { navController.navigate("add_expense") },
                                 navigateToBudgetSetup = { navController.navigate("budget_setup") },
-                                navigateToReports = { navController.navigate("reports") }
+                                navigateToReports = { navController.navigate("reports") },
+                                navigateToMPesaParser = { navController.navigate("mpesa_parser") } // Added navigation to MPesa parser
                             )
                         }
 
@@ -71,6 +104,13 @@ class MainActivity : ComponentActivity() {
                             )
                             ReportScreen(
                                 viewModel = viewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        // Add M-Pesa parser screen to the navigation
+                        composable("mpesa_parser") {
+                            MPesaMessageParserScreen(
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }

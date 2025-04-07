@@ -14,7 +14,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.ManageHistory
+import androidx.compose.material.icons.filled.RequestPage
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -42,7 +45,8 @@ fun BudgetOverviewScreen(
     viewModel: BudgetViewModel,
     navigateToAddExpense: () -> Unit,
     navigateToBudgetSetup: () -> Unit,
-    navigateToReports: () -> Unit
+    navigateToReports: () -> Unit,
+    navigateToMPesaParser: () -> Unit
 ) {
     val state by viewModel.budgetState.collectAsState()
 
@@ -51,12 +55,16 @@ fun BudgetOverviewScreen(
             TopAppBar(
                 title = { Text("Budget Tracker") },
                 actions = {
+                   IconButton(onClick = navigateToMPesaParser) {
+                       Icon(Icons.Default.ManageHistory, contentDescription = "navigate to mpesaparser")
+                   }
                     IconButton(onClick = navigateToReports) {
                         Icon(Icons.Default.Assessment, contentDescription = "Reports")
                     }
                     IconButton(onClick = navigateToBudgetSetup) {
                         Icon(Icons.Default.Settings, contentDescription = "Budget Settings")
                     }
+
                 }
             )
         },
