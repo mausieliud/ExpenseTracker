@@ -56,15 +56,20 @@ import com.example.expensetracker.mpesa.MPesaTransaction
 import com.example.expensetracker.mpesa.SortField
 import com.example.expensetracker.mpesa.SortOrder
 import com.example.expensetracker.TransactionCard
+import com.example.expensetracker.event.ExpenseFormEvent
 import com.example.expensetracker.mpesa.TransactionFilter
 import com.example.expensetracker.mpesa.TransactionSort
 import com.example.expensetracker.mpesa.extractMPesaTransactions
+import com.example.expensetracker.toExpense
+import com.example.expensetracker.ui.viewmodel.ExpenseFormViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MPesaMessageParserScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToExpenseForm: () -> Unit,
+    expenseViewModel: ExpenseFormViewModel
 ) {
     val context = LocalContext.current
 
@@ -146,6 +151,20 @@ fun MPesaMessageParserScreen(
                 }
             }
         }
+    }
+    // Function to handle adding a transaction as an expense
+    fun addTransactionAsExpense(transaction: MPesaTransaction) {
+        // Convert to expense
+        val expense = transaction.toExpense()
+
+        // Prefill the expense form
+        expenseViewModel.onEvent(ExpenseFormEvent.DescriptionChanged(expense.description))
+        expenseViewModel.onEvent(ExpenseFormEvent.AmountChanged(expense.amount.toString()))
+        expenseViewModel.onEvent(ExpenseFormEvent.CategoryChanged(expense.category))
+        expenseViewModel.onEvent(ExpenseFormEvent.DateChanged(expense.date))
+
+        // Navigate back to the expense form screen
+        onNavigateToExpenseForm()
     }
 
     // Check and trigger permission request on screen load
@@ -409,10 +428,16 @@ fun MPesaMessageParserScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredTransactions) { transaction ->
-                        TransactionCard(transaction)
+                        TransactionCard(
+                            transaction = transaction,
+                            onAddAsExpense = { addTransactionAsExpense(it) }
+                        )
                     }
                 }
             }
         }
     }
+
+
 }
+

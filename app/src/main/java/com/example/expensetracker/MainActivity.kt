@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -64,6 +65,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
 
+                    // Create a single shared instance of ExpenseFormViewModel
+                    val sharedExpenseViewModel: ExpenseFormViewModel = viewModel(
+                        factory = ExpenseFormViewModel.Factory(application)
+                    )
+
                     NavHost(navController = navController, startDestination = "overview") {
                         composable("overview") {
                             val viewModel: BudgetViewModel = viewModel(
@@ -74,16 +80,14 @@ class MainActivity : ComponentActivity() {
                                 navigateToAddExpense = { navController.navigate("add_expense") },
                                 navigateToBudgetSetup = { navController.navigate("budget_setup") },
                                 navigateToReports = { navController.navigate("reports") },
-                                navigateToMPesaParser = { navController.navigate("mpesa_parser") } // Added navigation to MPesa parser
+                                navigateToMPesaParser = { navController.navigate("mpesa_parser") }
                             )
                         }
 
                         composable("add_expense") {
-                            val viewModel: ExpenseFormViewModel = viewModel(
-                                factory = ExpenseFormViewModel.Factory(application)
-                            )
+                            // Use the shared ViewModel instance instead of creating a new one
                             ExpenseFormScreen(
-                                viewModel = viewModel,
+                                viewModel = sharedExpenseViewModel,
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
@@ -108,10 +112,12 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // Add M-Pesa parser screen to the navigation
+                        // Use the same shared ViewModel for M-Pesa parser
                         composable("mpesa_parser") {
                             MPesaMessageParserScreen(
-                                onNavigateBack = { navController.popBackStack() }
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToExpenseForm = { navController.navigate("add_expense") },
+                                expenseViewModel = sharedExpenseViewModel
                             )
                         }
                     }

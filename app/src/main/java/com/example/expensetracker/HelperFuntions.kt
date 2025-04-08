@@ -2,6 +2,7 @@ package com.example.expensetracker
 
 import androidx.compose.ui.graphics.Color
 import com.example.expensetracker.data.entity.Expense
+import com.example.expensetracker.mpesa.MPesaTransaction
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
@@ -72,3 +73,5 @@ fun convertToDatePairs(dailySpending: Map<String, Double>): List<Pair<Date, Doub
         Pair(weekStart, expensesInWeek.sumOf { it.amount } / 7.0)
     }.sortedBy { it.first }
 }
+
+
