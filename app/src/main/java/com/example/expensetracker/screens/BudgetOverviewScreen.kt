@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ManageHistory
 import androidx.compose.material.icons.filled.RequestPage
 import androidx.compose.material.icons.filled.Settings
@@ -46,7 +47,8 @@ fun BudgetOverviewScreen(
     navigateToAddExpense: () -> Unit,
     navigateToBudgetSetup: () -> Unit,
     navigateToReports: () -> Unit,
-    navigateToMPesaParser: () -> Unit
+    navigateToMPesaParser: () -> Unit,
+    navigateToRolloverSettings: () -> Unit
 ) {
     val state by viewModel.budgetState.collectAsState()
 
@@ -55,6 +57,9 @@ fun BudgetOverviewScreen(
             TopAppBar(
                 title = { Text("Budget Tracker") },
                 actions = {
+                    IconButton(onClick = navigateToRolloverSettings) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "Rollover Settings")
+                    }
                    IconButton(onClick = navigateToMPesaParser) {
                        Icon(Icons.Default.ManageHistory, contentDescription = "navigate to mpesaparser")
                    }

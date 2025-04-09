@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -18,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.expensetracker.screens.BudgetOverviewScreen
+import com.example.expensetracker.screens.BudgetRolloverSettingsScreen
 import com.example.expensetracker.screens.BudgetSetupScreen
 import com.example.expensetracker.screens.ExpenseFormScreen
 import com.example.expensetracker.screens.ReportScreen
@@ -70,17 +70,20 @@ class MainActivity : ComponentActivity() {
                         factory = ExpenseFormViewModel.Factory(application)
                     )
 
+                    // Create a single shared instance of BudgetViewModel
+                    val sharedBudgetViewModel: BudgetViewModel = viewModel(
+                        factory = BudgetViewModel.Factory(application)
+                    )
+
                     NavHost(navController = navController, startDestination = "overview") {
                         composable("overview") {
-                            val viewModel: BudgetViewModel = viewModel(
-                                factory = BudgetViewModel.Factory(application)
-                            )
                             BudgetOverviewScreen(
-                                viewModel = viewModel,
+                                viewModel = sharedBudgetViewModel,
                                 navigateToAddExpense = { navController.navigate("add_expense") },
                                 navigateToBudgetSetup = { navController.navigate("budget_setup") },
                                 navigateToReports = { navController.navigate("reports") },
-                                navigateToMPesaParser = { navController.navigate("mpesa_parser") }
+                                navigateToMPesaParser = { navController.navigate("mpesa_parser") },
+                                navigateToRolloverSettings = { navController.navigate("rollover_settings") }
                             )
                         }
 
@@ -118,6 +121,14 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { navController.popBackStack() },
                                 onNavigateToExpenseForm = { navController.navigate("add_expense") },
                                 expenseViewModel = sharedExpenseViewModel
+                            )
+                        }
+
+                        // Add the new rollover settings screen to navigation
+                        composable("rollover_settings") {
+                            BudgetRolloverSettingsScreen(
+                                viewModel = sharedBudgetViewModel,
+                                navigateBack = { navController.popBackStack() }
                             )
                         }
                     }
