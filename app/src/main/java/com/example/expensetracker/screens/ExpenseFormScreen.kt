@@ -89,7 +89,7 @@ fun ExpenseFormScreen(
                 value = state.amount,
                 onValueChange = { viewModel.onEvent(ExpenseFormEvent.AmountChanged(it)) },
                 label = { Text("Amount") },
-                prefix = { Text("$") },
+                prefix = { Text("Ksh.") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
