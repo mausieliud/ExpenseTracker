@@ -11,6 +11,7 @@ data class BudgetState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val remainingBudgetForToday: Double = 0.0,
+<<<<<<< HEAD
     val totalSpentToday: Double = 0.0,
     //for handling overflow/underflow
     val isAutomaticRolloverEnabled: Boolean = false,
@@ -18,4 +19,7 @@ data class BudgetState(
     val allowUnderflow: Boolean = true,
     val maxOverflowPercentage: Double = 100.0,
     val maxUnderflowPercentage: Double = 50.0
+=======
+    val totalSpentToday: Double = 0.0
+>>>>>>> parent of c669935 (Improved Budget overflow/underflow handling)
 )

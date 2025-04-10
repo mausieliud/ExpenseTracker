@@ -1,7 +1,6 @@
 package com.example.expensetracker.ui.viewmodel
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -41,9 +40,9 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadData()
-        loadRolloverSettings()
     }
 
+<<<<<<< HEAD
     private fun loadRolloverSettings() {
         viewModelScope.launch {
             val prefs = getApplication<Application>().getSharedPreferences(
@@ -70,6 +69,8 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+=======
+>>>>>>> parent of c669935 (Improved Budget overflow/underflow handling)
     private fun loadData() {
         viewModelScope.launch {
             _budgetState.update { it.copy(isLoading = true) }
@@ -170,10 +171,8 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
                     repository.resetAllData()
                 }
             }
-            is BudgetEvent.CheckForDayEnd -> {
-                checkForDayEnd()
-            }
 
+<<<<<<< HEAD
             is BudgetEvent.SetupAutomaticRollover -> {
                 setupAutomaticDailyCheck()
             }
@@ -380,6 +379,12 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+=======
+            else -> {} // Handle navigation events in the UI layer
+        }
+    }
+
+>>>>>>> parent of c669935 (Improved Budget overflow/underflow handling)
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(BudgetViewModel::class.java)) {

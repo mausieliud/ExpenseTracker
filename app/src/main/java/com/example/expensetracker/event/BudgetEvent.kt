@@ -10,6 +10,7 @@ sealed class BudgetEvent {
     data class EditExpense(val expense: Expense) : BudgetEvent()
     data class AddDailyAdjustment(val amount: Double, val date: String) : BudgetEvent()
     data object ResetAllData : BudgetEvent()
+<<<<<<< HEAD
     //triggers day end check
     data object CheckForDayEnd : BudgetEvent()
     data object SetupAutomaticRollover : BudgetEvent()
@@ -24,4 +25,6 @@ sealed class BudgetEvent {
     // Add events for manually running rollover
     //todo...still not working needs proper integration with view model
     data class ManualRolloverFromDate(val fromDate: String) : BudgetEvent()
+=======
+>>>>>>> parent of c669935 (Improved Budget overflow/underflow handling)
 }
