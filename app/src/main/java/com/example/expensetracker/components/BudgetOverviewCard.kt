@@ -24,11 +24,9 @@ fun BudgetOverviewCard(
     remainingToday: Double,
     totalSpentToday: Double,
     totalBudget: Double,
-    remainingBudget: Double,
-    todayAdjustment: Double = 0.0,  // Added parameter for today's adjustment
-    rolloverInfo: String? = null     // Optional info about recent rollovers
+    remainingBudget: Double
 ) {
-    BudgetProgressBar(totalBudget, remainingBudget)
+    BudgetProgressBar(totalBudget,remainingBudget)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -76,20 +74,6 @@ fun BudgetOverviewCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Show today's adjustment if any
-            if (todayAdjustment != 0.0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Today's Adjustment:")
-                    Text(
-                        "Ksh.${String.format("%.2f", todayAdjustment)}",
-                        color = if (todayAdjustment > 0) Color.Green else Color.Red
-                    )
-                }
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -106,16 +90,6 @@ fun BudgetOverviewCard(
                 Text(
                     "Ksh.${String.format("%.2f", remainingToday)}",
                     color = if (remainingToday > 0) Color.Green else Color.Red
-                )
-            }
-
-            // Show rollover information if provided
-            rolloverInfo?.let {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

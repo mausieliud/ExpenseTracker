@@ -2,6 +2,7 @@ package com.example.expensetracker.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,8 +15,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -28,9 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedCard
 import com.example.expensetracker.event.BudgetEvent
 import com.example.expensetracker.ui.viewmodel.BudgetViewModel
 
@@ -42,8 +40,12 @@ fun BudgetRolloverSettingsScreen(
 ) {
     val state by viewModel.budgetState.collectAsState()
 
+
     var enableRollover by remember { mutableStateOf(state.isAutomaticRolloverEnabled) }
-    var selectedOption by remember { mutableStateOf(state.rolloverOption) }
+    var allowOverflow by remember { mutableStateOf(state.allowOverflow) }
+    var allowUnderflow by remember { mutableStateOf(state.allowUnderflow) }
+    var maxOverflowPercentage by remember { mutableStateOf(state.maxOverflowPercentage) }
+    var maxUnderflowPercentage by remember { mutableStateOf(state.maxUnderflowPercentage) }
 
     Scaffold(
         topBar = {
@@ -64,7 +66,7 @@ fun BudgetRolloverSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Main description card
+            // Main switch to enable/disable automatic rollover
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -72,14 +74,14 @@ fun BudgetRolloverSettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        "Unspent Daily Budget Handling",
+                        "Automatic Budget Rollover",
                         style = MaterialTheme.typography.titleMedium
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        "Choose how you want to handle unspent budget at the end of each day",
+                        "Automatically redistribute unspent budget or overspending across remaining days",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -87,91 +89,28 @@ fun BudgetRolloverSettingsScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text("Enable Automatic Rollover")
                         Switch(
                             checked = enableRollover,
                             onCheckedChange = { isEnabled ->
                                 enableRollover = isEnabled
-                                viewModel.onEvent(BudgetEvent.SetAutomaticRollover(
-                                    isEnabled = isEnabled,
-                                    option = selectedOption
+                                viewModel.onEvent(BudgetEvent.ConfigureRolloverSettings(
+                                    allowOverflow = allowOverflow,
+                                    allowUnderflow = allowUnderflow,
+                                    maxOverflowPercentage = maxOverflowPercentage,
+                                    maxUnderflowPercentage = maxUnderflowPercentage,
+                                    isEnabled = isEnabled  // Pass the enabled state to the event
                                 ))
                             }
-                        )
-                        Text(
-                            text = if (enableRollover) "Automatic handling enabled" else "Manual handling only",
-                            modifier = Modifier.padding(start = 8.dp)
                         )
                     }
                 }
             }
 
-            // Options card
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        "When you don't spend your daily budget:",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Option 1: Reallocate
-                    RolloverOption(
-                        title = "Reallocate to remaining days",
-                        description = "Evenly distribute unspent amount across all remaining days in the budget period",
-                        isSelected = selectedOption == com.example.expensetracker.event.RolloverOption.REALLOCATE,
-                        onSelect = {
-                            selectedOption =
-                                com.example.expensetracker.event.RolloverOption.REALLOCATE
-                            viewModel.onEvent(BudgetEvent.SetAutomaticRollover(enableRollover,
-                                com.example.expensetracker.event.RolloverOption.REALLOCATE
-                            ))
-                        },
-                        enabled = enableRollover
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Option 2: Save
-                    RolloverOption(
-                        title = "Add to savings",
-                        description = "Add unspent amount to your savings without affecting future daily budgets",
-                        isSelected = selectedOption == com.example.expensetracker.event.RolloverOption.SAVE,
-                        onSelect = {
-                            selectedOption = com.example.expensetracker.event.RolloverOption.SAVE
-                            viewModel.onEvent(BudgetEvent.SetAutomaticRollover(enableRollover,
-                                com.example.expensetracker.event.RolloverOption.SAVE
-                            ))
-                        },
-                        enabled = enableRollover
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Option 3: Add to tomorrow
-                    RolloverOption(
-                        title = "Add to tomorrow only",
-                        description = "Add unspent amount only to tomorrow's budget allocation",
-                        isSelected = selectedOption == com.example.expensetracker.event.RolloverOption.ADD_TO_TOMORROW,
-                        onSelect = {
-                            selectedOption =
-                                com.example.expensetracker.event.RolloverOption.ADD_TO_TOMORROW
-                            viewModel.onEvent(BudgetEvent.SetAutomaticRollover(enableRollover,
-                                com.example.expensetracker.event.RolloverOption.ADD_TO_TOMORROW
-                            ))
-                        },
-                        enabled = enableRollover
-                    )
-                }
-            }
-
-            // Example card showing the effect
+            // Overflow settings
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -179,68 +118,141 @@ fun BudgetRolloverSettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        "How it works",
+                        "Budget Overflow Settings",
                         style = MaterialTheme.typography.titleMedium
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    val exampleText = when (selectedOption) {
-                        com.example.expensetracker.event.RolloverOption.REALLOCATE ->
-                            "If you don't spend Ksh.200 today with 10 days left in your budget period, Ksh.20 will be added to each remaining day."
-                        com.example.expensetracker.event.RolloverOption.SAVE ->
-                            "If you don't spend Ksh.200 today, it will be added to your savings total without changing your daily budget."
-                        com.example.expensetracker.event.RolloverOption.ADD_TO_TOMORROW ->
-                            "If you don't spend Ksh.200 today, tomorrow's budget will increase by Ksh.200."
-                        else -> ""
-                    }
-
-                    Text(exampleText)
+                    Text(
+                        "What happens when you don't spend your daily budget",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = { viewModel.onEvent(BudgetEvent.CheckForDayEnd) },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Process Today's Budget Now")
+                        Text("Allow Budget Overflow")
+                        Switch(
+                            checked = allowOverflow,
+                            onCheckedChange = {
+                                allowOverflow = it
+                                viewModel.onEvent(
+                                    BudgetEvent.ConfigureRolloverSettings(
+                                        allowOverflow = it,
+                                        allowUnderflow = allowUnderflow,
+                                        maxOverflowPercentage = maxOverflowPercentage,
+                                        maxUnderflowPercentage = maxUnderflowPercentage
+                                    )
+                                )
+                            },
+                            enabled = enableRollover
+                        )
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Maximum Overflow Percentage: ${maxOverflowPercentage.toInt()}%")
+                    Slider(
+                        value = maxOverflowPercentage.toFloat(),
+                        onValueChange = {
+                            maxOverflowPercentage = it.toDouble()
+                            viewModel.onEvent(
+                                BudgetEvent.ConfigureRolloverSettings(
+                                    allowOverflow = allowOverflow,
+                                    allowUnderflow = allowUnderflow,
+                                    maxOverflowPercentage = maxOverflowPercentage,
+                                    maxUnderflowPercentage = maxUnderflowPercentage
+                                )
+                            )
+                        },
+                        valueRange = 0f..100f,
+                        steps = 10,
+                        enabled = enableRollover && allowOverflow
+                    )
+
+                    Text(
+                        "This controls what percentage of your daily budget can be carried over to future days",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun RolloverOption(
-    title: String,
-    description: String,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    enabled: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        RadioButton(
-            selected = isSelected,
-            onClick = onSelect,
-            enabled = enabled
-        )
-        Column(
-            modifier = Modifier.padding(start = 8.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall
-            )
+            // Underflow settings
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        "Budget Underflow Settings",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "What happens when you spend more than your daily budget",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Allow Budget Underflow")
+                        Switch(
+                            checked = allowUnderflow,
+                            onCheckedChange = {
+                                allowUnderflow = it
+                                viewModel.onEvent(
+                                    BudgetEvent.ConfigureRolloverSettings(
+                                        allowOverflow = allowOverflow,
+                                        allowUnderflow = it,
+                                        maxOverflowPercentage = maxOverflowPercentage,
+                                        maxUnderflowPercentage = maxUnderflowPercentage
+                                    )
+                                )
+                            },
+                            enabled = enableRollover
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Maximum Underflow Percentage: ${maxUnderflowPercentage.toInt()}%")
+                    Slider(
+                        value = maxUnderflowPercentage.toFloat(),
+                        onValueChange = {
+                            maxUnderflowPercentage = it.toDouble()
+                            viewModel.onEvent(
+                                BudgetEvent.ConfigureRolloverSettings(
+                                    allowOverflow = allowOverflow,
+                                    allowUnderflow = allowUnderflow,
+                                    maxOverflowPercentage = maxOverflowPercentage,
+                                    maxUnderflowPercentage = maxUnderflowPercentage
+                                )
+                            )
+                        },
+                        valueRange = 0f..100f,
+                        steps = 10,
+                        enabled = enableRollover && allowUnderflow
+                    )
+
+                    Text(
+                        "This controls what percentage of your daily budget you can 'borrow' from future days",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 }

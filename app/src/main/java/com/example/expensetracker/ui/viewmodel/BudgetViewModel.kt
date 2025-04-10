@@ -12,7 +12,6 @@ import com.example.expensetracker.data.entity.DailyAdjustment
 import com.example.expensetracker.data.entity.Expense
 import com.example.expensetracker.event.ExpenseFormEvent
 import com.example.expensetracker.event.BudgetEvent
-import com.example.expensetracker.event.RolloverOption
 import com.example.expensetracker.state.BudgetState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,12 +51,17 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
             )
 
             val isEnabled = prefs.getBoolean("AUTOMATIC_ROLLOVER_ENABLED", false)
-            val optionOrdinal = prefs.getInt("ROLLOVER_OPTION", RolloverOption.REALLOCATE.ordinal)
-            val option = RolloverOption.values().getOrNull(optionOrdinal) ?: RolloverOption.REALLOCATE
+            val allowOverflow = prefs.getBoolean("ALLOW_OVERFLOW", true)
+            val allowUnderflow = prefs.getBoolean("ALLOW_UNDERFLOW", true)
+            val maxOverflow = prefs.getFloat("MAX_OVERFLOW_PERCENTAGE", 100f).toDouble()
+            val maxUnderflow = prefs.getFloat("MAX_UNDERFLOW_PERCENTAGE", 50f).toDouble()
 
             _budgetState.update { it.copy(
                 isAutomaticRolloverEnabled = isEnabled,
-                rolloverOption = option
+                allowOverflow = allowOverflow,
+                allowUnderflow = allowUnderflow,
+                maxOverflowPercentage = maxOverflow,
+                maxUnderflowPercentage = maxUnderflow
             )}
 
             // If automatic rollover is enabled, check for day changes
@@ -174,9 +178,8 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
                 setupAutomaticDailyCheck()
             }
 
-
-            is BudgetEvent.SetAutomaticRollover -> {
-                saveRolloverSettings(event.isEnabled, event.option)
+            is BudgetEvent.ConfigureRolloverSettings -> {
+                saveRolloverSettings(event)
             }
 
             else -> {} // todo Handling navigation events in the UI layer
@@ -197,30 +200,127 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-
-    private fun saveRolloverSettings(isEnabled: Boolean, option: RolloverOption) {
+    private fun saveRolloverSettings(event: BudgetEvent.ConfigureRolloverSettings) {
         val prefs = getApplication<Application>().getSharedPreferences(
             "BudgetPrefs", Context.MODE_PRIVATE
         ).edit()
 
-        prefs.putBoolean("AUTOMATIC_ROLLOVER_ENABLED", isEnabled)
-        prefs.putInt("ROLLOVER_OPTION", option.ordinal)
+        prefs.putBoolean("AUTOMATIC_ROLLOVER_ENABLED", event.isEnabled)
+        prefs.putBoolean("ALLOW_OVERFLOW", event.allowOverflow)
+        prefs.putBoolean("ALLOW_UNDERFLOW", event.allowUnderflow)
+        prefs.putFloat("MAX_OVERFLOW_PERCENTAGE", event.maxOverflowPercentage.toFloat())
+        prefs.putFloat("MAX_UNDERFLOW_PERCENTAGE", event.maxUnderflowPercentage.toFloat())
         prefs.apply()
 
         // Also update the state immediately
         _budgetState.update { it.copy(
-            isAutomaticRolloverEnabled = isEnabled,
-            rolloverOption = option
+            isAutomaticRolloverEnabled = event.isEnabled,
+            allowOverflow = event.allowOverflow,
+            allowUnderflow = event.allowUnderflow,
+            maxOverflowPercentage = event.maxOverflowPercentage,
+            maxUnderflowPercentage = event.maxUnderflowPercentage
         )}
 
         // If enabled, run the day check
-        if (isEnabled) {
+        if (event.isEnabled) {
             checkForDayEnd()
         }
     }
 
+    //Funtions below aAdded for handling overflow and underflow
+    private fun handleBudgetOverflowUnderflow() {
+        viewModelScope.launch {
+            val budget = _budgetState.value.budget ?: return@launch
+            val todayExpenses = _budgetState.value.expenses.filter { it.date == currentDate }
+            val todayAdjustment = _budgetState.value.dailyAdjustments
+                .find { it.date == currentDate }?.adjustment ?: 0.0
 
+            val todayAllocated = budget.allocation_per_day + todayAdjustment
+            val todaySpent = todayExpenses.sumOf { it.amount }
 
+            // Calculate overflow/underflow
+            val difference = todayAllocated - todaySpent
+
+            if (difference != 0.0) {
+                // Get remaining days in budget period
+                val remainingDays = calculateRemainingDaysInBudgetPeriod(budget)
+
+                if (remainingDays > 0) {
+                    // Calculate adjustment per day
+                    val adjustmentPerDay = difference / remainingDays
+
+                    // Create adjustments for future days
+                    distributeAdjustment(adjustmentPerDay, remainingDays)
+
+                    // Log the adjustment for tracking
+                    println("Budget ${if (difference > 0) "overflow" else "underflow"} of $difference distributed across $remainingDays days at $adjustmentPerDay per day")
+                }
+            }
+        }
+    }
+
+    private suspend fun distributeAdjustment(adjustmentPerDay: Double, remainingDays: Int) {
+        val prefs = getApplication<Application>().getSharedPreferences(
+            "BudgetPrefs", Context.MODE_PRIVATE
+        )
+        val allowOverflow = prefs.getBoolean("ALLOW_OVERFLOW", true)
+        val allowUnderflow = prefs.getBoolean("ALLOW_UNDERFLOW", true)
+        val maxOverflowPercentage = prefs.getFloat("MAX_OVERFLOW_PERCENTAGE", 100f).toDouble()
+        val maxUnderflowPercentage = prefs.getFloat("MAX_UNDERFLOW_PERCENTAGE", 50f).toDouble()
+
+        // If adjustment is positive (overflow) but overflow not allowed, return
+        if (adjustmentPerDay > 0 && !allowOverflow) return
+
+        // If adjustment is negative (underflow) but underflow not allowed, return
+        if (adjustmentPerDay < 0 && !allowUnderflow) return
+
+        val budget = _budgetState.value.budget ?: return
+        val dailyBudget = budget.allocation_per_day
+
+        // Apply limits based on settings
+        val limitedAdjustment = when {
+            adjustmentPerDay > 0 -> {
+                // Overflow - limit by percentage
+                val maxOverflow = dailyBudget * maxOverflowPercentage / 100.0
+                minOf(adjustmentPerDay, maxOverflow)
+            }
+            adjustmentPerDay < 0 -> {
+                // Underflow - limit by percentage
+                val maxUnderflow = dailyBudget * maxUnderflowPercentage / 100.0
+                maxOf(adjustmentPerDay, -maxUnderflow)
+            }
+            else -> 0.0
+        }
+
+        // If after limits, there's no adjustment to make, return
+        if (limitedAdjustment == 0.0) return
+
+        // Now distribute the limited adjustment
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val calendar = java.util.Calendar.getInstance()
+
+        // Skip today
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+
+        // Apply adjustment to each future day
+        for (i in 0 until remainingDays) {
+            val futureDate = dateFormat.format(calendar.time)
+
+            // Check if adjustment already exists
+            val existingAdjustment = dailyAdjustmentDao.getAdjustmentForDate(futureDate)
+            val newAdjustment = (existingAdjustment?.adjustment ?: 0.0) + limitedAdjustment
+
+            // Create or update adjustment
+            dailyAdjustmentDao.insertAdjustment(
+                DailyAdjustment(
+                    date = futureDate,
+                    adjustment = newAdjustment
+                )
+            )
+
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+    }
     private fun calculateRemainingDaysInBudgetPeriod(budget: Budget): Int {
         // This will depend on your budget period definition
         // For example, if budget is monthly:
@@ -230,94 +330,7 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         return lastDayOfMonth - currentDay
     }
 
-
-    private suspend fun processPreviousDayOverflowUnderflow(previousDate: String) {
-        val budget = _budgetState.value.budget ?: return
-        val previousDayExpenses = _budgetState.value.expenses.filter { it.date == previousDate }
-        val previousDayAdjustment = _budgetState.value.dailyAdjustments
-            .find { it.date == previousDate }?.adjustment ?: 0.0
-
-        val previousDayAllocated = budget.allocation_per_day + previousDayAdjustment
-        val previousDaySpent = previousDayExpenses.sumOf { it.amount }
-
-        // Calculate unspent amount (can be positive or negative)
-        val unspentAmount = previousDayAllocated - previousDaySpent
-
-        // Skip if there's nothing to process
-        if (unspentAmount == 0.0) return
-
-        // Process according to selected option
-        when (_budgetState.value.rolloverOption) {
-            RolloverOption.REALLOCATE -> reallocateToRemainingDays(unspentAmount)
-            RolloverOption.SAVE -> addToSavings(unspentAmount)
-            RolloverOption.ADD_TO_TOMORROW -> addToTomorrow(unspentAmount)
-            else -> {} // No action for NONE
-        }
-
-        // Update state with the last rollover info for UI feedback
-        _budgetState.update { it.copy(
-            lastRolloverAmount = unspentAmount,
-            lastRolloverDate = previousDate
-        )}
-    }
-    private suspend fun reallocateToRemainingDays(amount: Double) {
-        val budget = _budgetState.value.budget ?: return
-        val remainingDays = calculateRemainingDaysInBudgetPeriod(budget)
-
-        if (remainingDays <= 0) {
-            // If no days left, treat as savings
-            addToSavings(amount)
-            return
-        }
-
-        // Calculate adjustment per day
-        val adjustmentPerDay = amount / remainingDays
-
-        // Apply to all remaining days including today
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val calendar = java.util.Calendar.getInstance()
-
-        // Start from today
-        val startDate = dateFormat.format(calendar.time)
-
-        for (i in 0 until remainingDays) {
-            val dateToAdjust = if (i == 0) startDate else {
-                calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
-                dateFormat.format(calendar.time)
-            }
-
-            // Check if adjustment already exists for this date
-            val existingAdjustment = dailyAdjustmentDao.getAdjustmentForDate(dateToAdjust)
-            val newAdjustment = (existingAdjustment?.adjustment ?: 0.0) + adjustmentPerDay
-
-            // Save the adjustment
-            dailyAdjustmentDao.insertAdjustment(
-                DailyAdjustment(
-                    date = dateToAdjust,
-                    adjustment = newAdjustment
-                )
-            )
-        }
-
-        // Log the action
-        android.util.Log.d("BudgetRollover", "Reallocated $amount across $remainingDays days at $adjustmentPerDay per day")
-    }
-
-    private suspend fun addToSavings(amount: Double) {
-        // Add to overall remaining budget without affecting daily allocations
-        val budget = _budgetState.value.budget ?: return
-
-        // Update the budget's remaining amount
-        budgetDao.updateBudget(
-            budget.copy(
-                remaining_budget = budget.remaining_budget + amount
-            )
-        )
-
-        // Log the action
-        android.util.Log.d("BudgetRollover", "Added $amount to savings")
-    }
-
+    //Checks if the day has ended and triggers overflow/underflow handling
     fun checkForDayEnd() {
         viewModelScope.launch {
             val lastCheckedDatePref = getApplication<Application>().getSharedPreferences(
@@ -338,31 +351,34 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private suspend fun addToTomorrow(amount: Double) {
-        // Add the entire amount to tomorrow's budget only
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val calendar = java.util.Calendar.getInstance()
+    private suspend fun processPreviousDayOverflowUnderflow(previousDate: String) {
+        val budget = _budgetState.value.budget ?: return
+        val previousDayExpenses = _budgetState.value.expenses.filter { it.date == previousDate }
+        val previousDayAdjustment = _budgetState.value.dailyAdjustments
+            .find { it.date == previousDate }?.adjustment ?: 0.0
 
-        // Get tomorrow's date
-        calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
-        val tomorrow = dateFormat.format(calendar.time)
+        val previousDayAllocated = budget.allocation_per_day + previousDayAdjustment
+        val previousDaySpent = previousDayExpenses.sumOf { it.amount }
 
-        // Check if adjustment already exists
-        val existingAdjustment = dailyAdjustmentDao.getAdjustmentForDate(tomorrow)
-        val newAdjustment = (existingAdjustment?.adjustment ?: 0.0) + amount
+        // Calculate overflow/underflow
+        val difference = previousDayAllocated - previousDaySpent
 
-        // Save the adjustment
-        dailyAdjustmentDao.insertAdjustment(
-            DailyAdjustment(
-                date = tomorrow,
-                adjustment = newAdjustment
-            )
-        )
+        if (difference != 0.0) {
+            // Get remaining days in budget period including today
+            val remainingDays = calculateRemainingDaysInBudgetPeriod(budget)
 
-        // Log the action
-        android.util.Log.d("BudgetRollover", "Added $amount to tomorrow's budget")
+            if (remainingDays > 0) {
+                // Calculate adjustment per day
+                val adjustmentPerDay = difference / remainingDays
+
+                // Create adjustments for future days including today
+                distributeAdjustment(adjustmentPerDay, remainingDays)
+
+                // Log the adjustment for tracking
+                println("Previous day budget ${if (difference > 0) "overflow" else "underflow"} of $difference distributed across $remainingDays days at $adjustmentPerDay per day")
+            }
+        }
     }
-
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
