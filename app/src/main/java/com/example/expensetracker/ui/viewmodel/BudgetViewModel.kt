@@ -37,6 +37,7 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
     // Current date
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val currentDate: String = dateFormat.format(Date())
+    private var underflowHandledForToday = false
 
     init {
         loadData()
@@ -69,8 +70,12 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
         val todayAdjustment = adjustments.find { it.date == currentDate }?.adjustment ?: 0.0
 
-        // Calculate remaining budget for today based on days left in budget period
-        val remainingBudgetForToday = budget?.let {
+        // Calculate remaining budget for today and check for underflow
+        var remainingBudgetForToday = 0.0
+        var hasUnderflow = false
+        var underflowAmount = 0.0
+
+        budget?.let {
             try {
                 // Parse dates to calculate remaining days
                 val startDateObj = dateFormat.parse(it.start_date)
@@ -78,36 +83,63 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
                 val todayDateObj = dateFormat.parse(currentDate)
 
                 if (startDateObj != null && endDateObj != null && todayDateObj != null) {
-                    // If today is before budget start date, return 0
-                    if (todayDateObj.before(startDateObj)) {
-                        return@let 0.0
-                    }
-
-                    // If today is after budget end date, return 0
-                    if (todayDateObj.after(endDateObj)) {
-                        return@let 0.0
-                    }
-
-                    // Calculate remaining days including today
-                    val daysUntilEnd = ((endDateObj.time - todayDateObj.time) / (1000 * 60 * 60 * 24)).toInt() + 1
-
-                    // Calculate remaining budget per day based on remaining days
-                    val remainingDailyBudget = if (daysUntilEnd > 0) {
-                        it.remaining_budget / daysUntilEnd
+                    // If today is before budget start date or after budget end date, return 0
+                    if (todayDateObj.before(startDateObj) || todayDateObj.after(endDateObj)) {
+                        remainingBudgetForToday = 0.0
                     } else {
-                        0.0
-                    }
+                        // Calculate remaining days including today
+                        val daysUntilEnd = ((endDateObj.time - todayDateObj.time) / (1000 * 60 * 60 * 24)).toInt() + 1
 
-                    // Add today's adjustment and subtract today's expenses
-                    remainingDailyBudget + todayAdjustment - totalSpentToday
+                        // Calculate daily budget allocation
+                        val dailyBudget = if (daysUntilEnd > 0) {
+                            it.remaining_budget / daysUntilEnd
+                        } else {
+                            it.allocation_per_day
+                        }
+
+                        // Calculate today's total allocation (daily budget + any adjustments)
+                        val todayAllocation = dailyBudget + todayAdjustment
+
+                        // Calculate remaining amount after today's expenses
+                        remainingBudgetForToday = todayAllocation - totalSpentToday
+
+                        // Check for underflow (unused daily budget)
+                        if (remainingBudgetForToday > 0 && endDateObj.after(todayDateObj) && !underflowHandledForToday) {
+                            hasUnderflow = true
+                            underflowAmount = remainingBudgetForToday
+                        }
+                    }
                 } else {
-                    it.allocation_per_day + todayAdjustment - totalSpentToday
+                    remainingBudgetForToday = it.allocation_per_day + todayAdjustment - totalSpentToday
                 }
             } catch (e: Exception) {
                 // Fallback to simple calculation if date parsing fails
-                it.allocation_per_day + todayAdjustment - totalSpentToday
+                remainingBudgetForToday = it.allocation_per_day + todayAdjustment - totalSpentToday
             }
-        } ?: 0.0
+        }
+
+        // Calculate days left in the budget period
+        val daysLeft = budget?.let {
+            try {
+                val endDateObj = dateFormat.parse(it.end_date)
+                val todayDateObj = dateFormat.parse(currentDate)
+
+                if (endDateObj != null && todayDateObj != null) {
+                    max(0, ((endDateObj.time - todayDateObj.time) / (1000 * 60 * 60 * 24)).toInt())
+                } else {
+                    0
+                }
+            } catch (e: Exception) {
+                0
+            }
+        } ?: 0
+
+        // Calculate daily budget rate based on remaining budget and days
+        val dailyBudgetRate = if (daysLeft > 0 && budget != null) {
+            budget.remaining_budget / daysLeft
+        } else {
+            0.0
+        }
 
         return BudgetState(
             budget = budget,
@@ -115,8 +147,24 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
             dailyAdjustments = adjustments,
             isLoading = false,
             remainingBudgetForToday = max(0.0, remainingBudgetForToday),
-            totalSpentToday = totalSpentToday
+            totalSpentToday = totalSpentToday,
+            daysLeft = daysLeft,
+            dailyBudgetRate = dailyBudgetRate,
+            hasUnderflow = hasUnderflow,
+            underflowAmount = underflowAmount
         )
+
+        //For overflow underflow handling..after presentations modify underflow detection logic to
+        //// In calculateBudgetState function, update the hasUnderflow check:
+        //// Check for underflow (unused daily budget) - add check for the current time of day
+        //val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        //val isEndOfDay = currentHour >= 20 // end of day after 8 PM
+        //
+        //if (remainingBudgetForToday > 0 && endDateObj.after(todayDateObj) && isEndOfDay) {
+        //    hasUnderflow = true
+        //    underflowAmount = remainingBudgetForToday
+        //}
+        //So that it appears after 8pm most probable time it would be useful for user.
     }
 
     fun onEvent(event: BudgetEvent) {
@@ -125,11 +173,9 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
             is BudgetEvent.DeleteExpense -> {
                 viewModelScope.launch {
-                    // Get the expense before deleting it to update the budget
                     val expense = event.expense
                     expenseDao.deleteExpense(expense)
 
-                    // Add the expense amount back to the remaining budget
                     _budgetState.value.budget?.let { budget ->
                         budgetDao.updateBudget(
                             budget.copy(
@@ -142,13 +188,10 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
             is BudgetEvent.AddDailyAdjustment -> {
                 viewModelScope.launch {
-                    // Check if there's an existing adjustment for this date
                     val existingAdjustment = dailyAdjustmentDao.getAdjustmentForDate(event.date)
                     val adjustmentDifference = if (existingAdjustment != null) {
-                        // If updating an existing adjustment, calculate the difference
                         event.amount - existingAdjustment.adjustment
                     } else {
-                        // If it's a new adjustment, use the full amount
                         event.amount
                     }
 
@@ -158,9 +201,6 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
                     )
                     dailyAdjustmentDao.insertAdjustment(adjustment)
 
-                    // Update remaining budget correctly
-                    // For an adjustment, we SUBTRACT from the remaining budget
-                    // (positive adjustment means more money for today, less for future days)
                     _budgetState.value.budget?.let { budget ->
                         budgetDao.updateBudget(
                             budget.copy(
@@ -177,8 +217,65 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
+            // New event handlers for underflow
+            is BudgetEvent.SaveUnderflowToSavings -> {
+                viewModelScope.launch {
+                    val underflowAmount = _budgetState.value.underflowAmount
+                    _budgetState.value.budget?.let { budget ->
+                        // Update the budget by reducing remaining budget and increasing savings
+                        budgetDao.updateBudget(
+                            budget.copy(
+                                remaining_budget = budget.remaining_budget - underflowAmount,
+                                savings = budget.savings + underflowAmount
+                            )
+                        )
+
+                        // Add a negative adjustment for today to mark the underflow as used
+                        val adjustment = DailyAdjustment(
+                            date = currentDate,
+                            adjustment = -underflowAmount
+                        )
+                        dailyAdjustmentDao.insertAdjustment(adjustment)
+
+                        // Reload data to update UI
+                        loadData()
+                    }
+                }
+            }
+
+            is BudgetEvent.RolloverUnderflow -> {
+                // Todo Do nothing - the default behavior is to rollover by letting
+                // the remaining amount be part of the remaining budget
+                // Just add a record of the rollover for tracking purposes
+                viewModelScope.launch {
+                    val adjustment = DailyAdjustment(
+                        date = currentDate,
+                        adjustment = -_budgetState.value.underflowAmount
+                    )
+                    dailyAdjustmentDao.insertAdjustment(adjustment)
+
+                    // Reload data to update UI (remove underflow indicator)
+                    loadData()
+                }
+            }
+
+            is BudgetEvent.IgnoreUnderflow -> {
+                underflowHandledForToday = true
+                //update state to mark underflow as handled so the prompt disappears
+                viewModelScope.launch {
+                    _budgetState.update { it.copy(
+                        hasUnderflow = false,
+                        underflowAmount = 0.0
+                    )}
+                }
+            }
+
             else -> {} // Handle navigation events in the UI layer
         }
+    }
+
+    fun resetDailyFlags() {
+        underflowHandledForToday = false
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {

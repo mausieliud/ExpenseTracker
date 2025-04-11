@@ -1,8 +1,12 @@
 package com.example.expensetracker.components
 
 import BudgetProgressBar
-import androidx.compose.material3.Card
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,16 +14,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
-import java.util.Locale
 import java.util.Date
+import java.util.Locale
 import kotlin.math.max
 
 @Composable
@@ -28,7 +42,12 @@ fun BudgetOverviewCard(
     totalSpentToday: Double,
     totalBudget: Double,
     remainingBudget: Double,
-    budget: com.example.expensetracker.data.entity.Budget? = null
+    budget: com.example.expensetracker.data.entity.Budget? = null,
+    hasUnderflow: Boolean = false,
+    underflowAmount: Double = 0.0,
+    onSaveUnderflow: () -> Unit = {},
+    onRolloverUnderflow: () -> Unit = {},
+    onIgnoreUnderflow: () -> Unit = {}
 ) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val currentDate = dateFormat.format(Date())
@@ -51,6 +70,7 @@ fun BudgetOverviewCard(
 
     val dailyBudgetRate = if (daysLeft > 0) remainingBudget / daysLeft else 0.0
     val percentRemaining = if (totalBudget > 0) (remainingBudget / totalBudget) * 100 else 0.0
+    val savings = budget?.savings ?: 0.0
 
     BudgetProgressBar(totalBudget, remainingBudget)
     Card(
@@ -91,6 +111,17 @@ fun BudgetOverviewCard(
                         percentRemaining > 20 -> Color(0xFFFFA500) // Orange
                         else -> Color.Red
                     }
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Savings:")
+                Text(
+                    "Ksh.${String.format("%.2f", savings)}",
+                    color = Color(0xFF4CAF50) // Green color for savings
                 )
             }
 
@@ -149,6 +180,75 @@ fun BudgetOverviewCard(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+            }
+
+            // Show underflow options if there's unused budget for today
+            AnimatedVisibility(
+                visible = hasUnderflow && underflowAmount > 0,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFE8F5E9))
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        "You have Ksh.${String.format("%.2f", underflowAmount)} remaining in today's budget",
+                        color = Color(0xFF2E7D32),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "What would you like to do with this amount?",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Button(
+                            onClick = onSaveUnderflow,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2E7D32)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Save It")
+                        }
+
+                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+
+                        OutlinedButton(
+                            onClick = onRolloverUnderflow,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Rollover")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    TextButton(
+                        onClick = onIgnoreUnderflow,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("Ignore", color = Color.Gray)
+                    }
+                }
             }
         }
     }

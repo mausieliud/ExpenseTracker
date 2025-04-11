@@ -13,5 +13,7 @@ data class BudgetState(
     val totalSpentToday: Double = 0.0,
     val daysLeft: Int = 0,
     val dailyBudgetRate: Double = 0.0,
+    val hasUnderflow: Boolean = false,
+    val underflowAmount: Double = 0.0,
     val error: String? = null
 )

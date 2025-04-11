@@ -55,16 +55,15 @@ fun BudgetOverviewScreen(
             TopAppBar(
                 title = { Text("Budget Tracker") },
                 actions = {
-                   IconButton(onClick = navigateToMPesaParser) {
-                       Icon(Icons.Default.ManageHistory, contentDescription = "navigate to mpesaparser")
-                   }
+                    IconButton(onClick = navigateToMPesaParser) {
+                        Icon(Icons.Default.ManageHistory, contentDescription = "navigate to mpesaparser")
+                    }
                     IconButton(onClick = navigateToReports) {
                         Icon(Icons.Default.Assessment, contentDescription = "Reports")
                     }
                     IconButton(onClick = navigateToBudgetSetup) {
                         Icon(Icons.Default.Settings, contentDescription = "Budget Settings")
                     }
-
                 }
             )
         },
@@ -116,7 +115,12 @@ fun BudgetOverviewScreen(
                     remainingBudget = state.budget?.remaining_budget ?: 0.0,
                     remainingToday = state.remainingBudgetForToday,
                     totalSpentToday = state.totalSpentToday,
-                    budget = state.budget // Pass the entire budget object
+                    budget = state.budget,
+                    hasUnderflow = state.hasUnderflow,
+                    underflowAmount = state.underflowAmount,
+                    onSaveUnderflow = { viewModel.onEvent(BudgetEvent.SaveUnderflowToSavings) },
+                    onRolloverUnderflow = { viewModel.onEvent(BudgetEvent.RolloverUnderflow) },
+                    onIgnoreUnderflow = { viewModel.onEvent(BudgetEvent.IgnoreUnderflow) }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

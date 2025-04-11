@@ -10,4 +10,8 @@ sealed class BudgetEvent {
     data class EditExpense(val expense: Expense) : BudgetEvent()
     data class AddDailyAdjustment(val amount: Double, val date: String) : BudgetEvent()
     data object ResetAllData : BudgetEvent()
+    //for handling underflow
+    object SaveUnderflowToSavings : BudgetEvent()
+    object RolloverUnderflow : BudgetEvent()
+    object IgnoreUnderflow : BudgetEvent()
 }
