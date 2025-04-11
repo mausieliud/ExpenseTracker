@@ -69,10 +69,44 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
         val todayAdjustment = adjustments.find { it.date == currentDate }?.adjustment ?: 0.0
 
+        // Calculate remaining budget for today based on days left in budget period
         val remainingBudgetForToday = budget?.let {
-            // Logic to calculate daily budget including adjustments
-            val allocatedDaily = it.allocation_per_day
-            allocatedDaily + todayAdjustment - totalSpentToday
+            try {
+                // Parse dates to calculate remaining days
+                val startDateObj = dateFormat.parse(it.start_date)
+                val endDateObj = dateFormat.parse(it.end_date)
+                val todayDateObj = dateFormat.parse(currentDate)
+
+                if (startDateObj != null && endDateObj != null && todayDateObj != null) {
+                    // If today is before budget start date, return 0
+                    if (todayDateObj.before(startDateObj)) {
+                        return@let 0.0
+                    }
+
+                    // If today is after budget end date, return 0
+                    if (todayDateObj.after(endDateObj)) {
+                        return@let 0.0
+                    }
+
+                    // Calculate remaining days including today
+                    val daysUntilEnd = ((endDateObj.time - todayDateObj.time) / (1000 * 60 * 60 * 24)).toInt() + 1
+
+                    // Calculate remaining budget per day based on remaining days
+                    val remainingDailyBudget = if (daysUntilEnd > 0) {
+                        it.remaining_budget / daysUntilEnd
+                    } else {
+                        0.0
+                    }
+
+                    // Add today's adjustment and subtract today's expenses
+                    remainingDailyBudget + todayAdjustment - totalSpentToday
+                } else {
+                    it.allocation_per_day + todayAdjustment - totalSpentToday
+                }
+            } catch (e: Exception) {
+                // Fallback to simple calculation if date parsing fails
+                it.allocation_per_day + todayAdjustment - totalSpentToday
+            }
         } ?: 0.0
 
         return BudgetState(

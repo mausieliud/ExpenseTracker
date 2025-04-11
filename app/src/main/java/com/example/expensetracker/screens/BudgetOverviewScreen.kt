@@ -115,7 +115,8 @@ fun BudgetOverviewScreen(
                     totalBudget = state.budget?.total_budget ?: 0.0,
                     remainingBudget = state.budget?.remaining_budget ?: 0.0,
                     remainingToday = state.remainingBudgetForToday,
-                    totalSpentToday = state.totalSpentToday
+                    totalSpentToday = state.totalSpentToday,
+                    budget = state.budget // Pass the entire budget object
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

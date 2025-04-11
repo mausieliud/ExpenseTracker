@@ -17,16 +17,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
+import kotlin.math.max
 
 @Composable
 fun BudgetOverviewCard(
     remainingToday: Double,
     totalSpentToday: Double,
     totalBudget: Double,
-    remainingBudget: Double
+    remainingBudget: Double,
+    budget: com.example.expensetracker.data.entity.Budget? = null
 ) {
-    BudgetProgressBar(totalBudget,remainingBudget)
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val currentDate = dateFormat.format(Date())
+
+    // Calculate budget stats
+    val daysLeft = budget?.let {
+        try {
+            val endDateObj = dateFormat.parse(it.end_date)
+            val todayDateObj = dateFormat.parse(currentDate)
+
+            if (endDateObj != null && todayDateObj != null) {
+                max(0, ((endDateObj.time - todayDateObj.time) / (1000 * 60 * 60 * 24)).toInt() + 1)
+            } else {
+                0
+            }
+        } catch (e: Exception) {
+            0
+        }
+    } ?: 0
+
+    val dailyBudgetRate = if (daysLeft > 0) remainingBudget / daysLeft else 0.0
+    val percentRemaining = if (totalBudget > 0) (remainingBudget / totalBudget) * 100 else 0.0
+
+    BudgetProgressBar(totalBudget, remainingBudget)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -59,9 +85,31 @@ fun BudgetOverviewCard(
             ) {
                 Text("Remaining Overall:")
                 Text(
-                    "Ksh.${String.format("%.2f", remainingBudget)}",
-                    color = if (remainingBudget > 0) Color.Green else Color.Red
+                    "Ksh.${String.format("%.2f", remainingBudget)} (${String.format("%.1f", percentRemaining)}%)",
+                    color = when {
+                        percentRemaining > 40 -> Color.Green
+                        percentRemaining > 20 -> Color(0xFFFFA500) // Orange
+                        else -> Color.Red
+                    }
                 )
+            }
+
+            if (daysLeft > 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Days Remaining:")
+                    Text("$daysLeft days")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Daily Budget:")
+                    Text("Ksh.${String.format("%.2f", dailyBudgetRate)}")
+                }
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -90,6 +138,16 @@ fun BudgetOverviewCard(
                 Text(
                     "Ksh.${String.format("%.2f", remainingToday)}",
                     color = if (remainingToday > 0) Color.Green else Color.Red
+                )
+            }
+
+            // Show overspent warning if needed
+            if (remainingToday < 0) {
+                Text(
+                    "⚠️ You've exceeded today's budget. This will affect your future daily allowance.",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
         }
