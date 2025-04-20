@@ -1,6 +1,5 @@
-package com.example.expensetracker
+package com.example.expensetracker.mpesa
 
-import com.example.expensetracker.mpesa.MPesaTransaction
 import com.example.expensetracker.data.entity.Expense
 import java.text.SimpleDateFormat
 import java.util.Date

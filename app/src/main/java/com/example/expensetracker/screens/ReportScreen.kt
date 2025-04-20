@@ -84,6 +84,19 @@ import com.example.expensetracker.data.entity.Expense
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.ZoneId
+import android.content.Context
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.expensetracker.ReportExporter
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +131,7 @@ fun ReportScreen(
     }
 
     Scaffold(
+
         topBar = {
             TopAppBar(
                 title = { Text("Expense Reports") },
@@ -127,6 +141,81 @@ fun ReportScreen(
                     }
                 },
                 actions = {
+                    // Add export button
+                    var showExportMenu by remember { mutableStateOf(false) }
+                    var showExportDialog by remember { mutableStateOf(false) }
+                    var exportAsCSV by remember { mutableStateOf(false) }
+
+                    // Local context for file operations
+                    val context = LocalContext.current
+                    val coroutineScope = rememberCoroutineScope()
+
+                    // Handle successful export
+                    var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
+                    var exportErrorMessage by remember { mutableStateOf<String?>(null) }
+
+                    LaunchedEffect(exportSuccessMessage) {
+                        exportSuccessMessage?.let {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(message = it)
+                                exportSuccessMessage = null
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(exportErrorMessage) {
+                        exportErrorMessage?.let {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(message = it)
+                                exportErrorMessage = null
+                            }
+                        }
+                    }
+
+                    // Export dialog
+                    if (showExportDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showExportDialog = false },
+                            title = { Text("Export Report") },
+                            text = {
+                                Text("Do you want to export the report as CSV (for spreadsheet) or text summary?")
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showExportDialog = false
+                                    exportAsCSV = true
+                                    coroutineScope.launch {
+                                        exportReport(context, viewModel, true) { success, message ->
+                                            if (success) exportSuccessMessage = message
+                                            else exportErrorMessage = message
+                                        }
+                                    }
+                                }) {
+                                    Text("CSV")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = {
+                                    showExportDialog = false
+                                    exportAsCSV = false
+                                    coroutineScope.launch {
+                                        exportReport(context, viewModel, false) { success, message ->
+                                            if (success) exportSuccessMessage = message
+                                            else exportErrorMessage = message
+                                        }
+                                    }
+                                }) {
+                                    Text("Text Summary")
+                                }
+                            }
+                        )
+                    }
+
+                    // Export button with dropdown
+                    IconButton(onClick = { showExportDialog = true }) {
+                        Icon(Icons.Default.Share, contentDescription = "Export Report")
+                    }
+
                     IconButton(
                         onClick = { viewModel.refreshData() },
                         enabled = !state.isLoading
@@ -747,5 +836,32 @@ fun ReportScreen(
                 }
             }
         }
+    }
+}
+
+private suspend fun exportReport(
+    context: Context,
+    viewModel: ReportViewModel,
+    isCSV: Boolean,
+    callback: (Boolean, String) -> Unit
+) {
+    try {
+        val reportContent = if (isCSV) {
+            viewModel.generateCSVReport()
+        } else {
+            viewModel.generateTextReport()
+        }
+
+        val fileUri = ReportExporter.exportReportToFile(context, reportContent, isCSV)
+
+        if (fileUri != null) {
+            // Share the report
+            ReportExporter.shareReport(context, fileUri, isCSV)
+            callback(true, "Report exported successfully")
+        } else {
+            callback(false, "Failed to create report file")
+        }
+    } catch (e: Exception) {
+        callback(false, "Error exporting report: ${e.message}")
     }
 }

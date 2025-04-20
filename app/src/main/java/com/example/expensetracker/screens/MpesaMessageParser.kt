@@ -70,7 +70,7 @@ import com.example.expensetracker.event.ExpenseFormEvent
 import com.example.expensetracker.mpesa.TransactionFilter
 import com.example.expensetracker.mpesa.TransactionSort
 import com.example.expensetracker.mpesa.extractMPesaTransactions
-import com.example.expensetracker.toExpense
+import com.example.expensetracker.mpesa.toExpense
 import com.example.expensetracker.ui.viewmodel.ExpenseFormViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -268,6 +268,7 @@ fun MPesaMessageParserScreen(
     }
 
     // Check and trigger permission request on screen load
+    //redundant...not in MainActivity.Kt but useful as single app.
     LaunchedEffect(key1 = Unit) {
         if (!hasReadSmsPermission) {
             // Explicitly launch permission request

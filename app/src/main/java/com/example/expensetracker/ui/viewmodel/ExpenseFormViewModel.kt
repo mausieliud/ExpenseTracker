@@ -10,7 +10,7 @@ import com.example.expensetracker.data.entity.Expense
 import com.example.expensetracker.event.ExpenseFormEvent
 import com.example.expensetracker.mpesa.MPesaTransaction
 import com.example.expensetracker.state.ExpenseFormState
-import com.example.expensetracker.toExpense
+import com.example.expensetracker.mpesa.toExpense
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

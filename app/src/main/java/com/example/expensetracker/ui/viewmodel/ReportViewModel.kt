@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.database.BudgetDatabase
 import com.example.expensetracker.data.entity.Expense
 import com.example.expensetracker.data.model.TimeSeriesDataPoint
+import com.example.expensetracker.roundToDecimalPlaces
 import com.example.expensetracker.state.ReportState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -360,5 +361,90 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
+
+    }
+
+    /**
+     * Generates a text summary report of the current expense data
+     */
+    fun generateTextReport(): String {
+        val state = _reportState.value
+        val sb = StringBuilder()
+
+        // Report header
+        sb.appendLine("EXPENSE REPORT SUMMARY")
+        sb.appendLine("Time Period: ${state.timeRange}")
+        if (state.timeRange == "Custom Range" && state.startDate != null && state.endDate != null) {
+            sb.appendLine("Date Range: ${dateFormat.format(state.startDate)} to ${dateFormat.format(state.endDate)}")
+        }
+        sb.appendLine("")
+
+        // Spending summary
+        sb.appendLine("SPENDING SUMMARY")
+        sb.appendLine("Total Spent: Ksh.${state.totalSpent.roundToDecimalPlaces(2)}")
+        sb.appendLine("Daily Average: Ksh.${state.dailyAverage.roundToDecimalPlaces(2)}")
+
+        // Budget info if available
+        state.budget?.let { budget ->
+            val utilization = if (budget.total_budget > 0) (state.totalSpent / budget.total_budget * 100) else 0.0
+            sb.appendLine("Budget: Ksh.${budget.total_budget}")
+            sb.appendLine("Budget Utilization: ${utilization.roundToDecimalPlaces(1)}%")
+        }
+        sb.appendLine("")
+
+        // Category breakdown
+        sb.appendLine("CATEGORY BREAKDOWN")
+        if (state.categoryBreakdown.isEmpty()) {
+            sb.appendLine("No expense data available")
+        } else {
+            state.categoryBreakdown.forEach { (category, amount) ->
+                val percentage = if (state.totalSpent > 0) (amount / state.totalSpent * 100) else 0.0
+                sb.appendLine("$category: Ksh.${amount.roundToDecimalPlaces(2)} (${percentage.roundToDecimalPlaces(1)}%)")
+            }
+        }
+        sb.appendLine("")
+
+        // Top expenses
+        sb.appendLine("TOP EXPENSES")
+        if (state.expenses.isEmpty()) {
+            sb.appendLine("No expenses to display")
+        } else {
+            state.expenses.sortedByDescending { it.amount }.take(10).forEach { expense ->
+                sb.appendLine("${expense.description} (${expense.category}) - Ksh.${expense.amount.roundToDecimalPlaces(2)} on ${expense.date}")
+            }
+        }
+
+        // Daily spending
+        sb.appendLine("")
+        sb.appendLine("DAILY SPENDING")
+        if (state.dailySpending.isEmpty()) {
+            sb.appendLine("No daily spending data available")
+        } else {
+            state.dailySpending.entries.take(10).forEach { (date, amount) ->
+                sb.appendLine("$date: Ksh.${amount.roundToDecimalPlaces(2)}")
+            }
+        }
+
+        return sb.toString()
+    }
+
+    /**
+     * Generates a CSV formatted report of expenses
+     */
+    fun generateCSVReport(): String {
+        val state = _reportState.value
+        val sb = StringBuilder()
+
+        // CSV header
+        sb.appendLine("Date,Amount,Category,Description")
+
+        // Expense data
+        state.expenses.forEach { expense ->
+            // Escape description in case it contains commas
+            val safeDescription = "\"${expense.description.replace("\"", "\"\"")}\""
+            sb.appendLine("${expense.date},${expense.amount},${expense.category},$safeDescription")
+        }
+
+        return sb.toString()
     }
 }
