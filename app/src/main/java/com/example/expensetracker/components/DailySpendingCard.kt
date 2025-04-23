@@ -19,8 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.expensetracker.roundToDecimalPlaces
-import java.text.NumberFormat
+import com.example.expensetracker.helpers.roundToDecimalPlaces
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date

@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,7 +25,7 @@ import com.example.expensetracker.ui.viewmodel.BudgetFormViewModel
 import com.example.expensetracker.ui.viewmodel.BudgetViewModel
 import com.example.expensetracker.ui.viewmodel.ExpenseFormViewModel
 import com.example.expensetracker.ui.viewmodel.ReportViewModel
-import com.example.expensetracker.screens.MPesaMessageParserScreen
+import com.example.expensetracker.mpesa.screen.MPesaMessageParserScreen
 
 class MainActivity : ComponentActivity() {
     companion object {

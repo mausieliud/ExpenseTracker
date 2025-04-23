@@ -1,4 +1,4 @@
-package com.example.expensetracker
+package com.example.expensetracker.helpers
 
 import android.content.Context
 import android.content.Intent

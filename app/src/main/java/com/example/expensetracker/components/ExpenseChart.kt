@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.data.model.TimeSeriesDataPoint
-import com.example.expensetracker.roundToDecimalPlaces
+import com.example.expensetracker.helpers.roundToDecimalPlaces
 import java.text.NumberFormat
 import java.util.Locale
 

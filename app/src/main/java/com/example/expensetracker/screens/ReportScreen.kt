@@ -1,6 +1,5 @@
 package com.example.expensetracker.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,36 +66,25 @@ import com.example.expensetracker.components.DailySpendingCard
 import com.example.expensetracker.components.ExpenseChart
 import com.example.expensetracker.components.MinMaxSpentCard
 import com.example.expensetracker.components.getCategoryColor
-import com.example.expensetracker.roundToDecimalPlaces
+import com.example.expensetracker.helpers.roundToDecimalPlaces
 import com.example.expensetracker.ui.viewmodel.ReportViewModel
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingFlat
 import androidx.compose.material.icons.filled.TrendingUp
-import com.example.expensetracker.calculateTrend
-import com.example.expensetracker.calculateWeeklyAverages
-import com.example.expensetracker.convertToDatePairs
+import com.example.expensetracker.helpers.calculateTrend
+import com.example.expensetracker.helpers.calculateWeeklyAverages
+import com.example.expensetracker.helpers.convertToDatePairs
 import com.example.expensetracker.data.entity.Expense
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.ZoneId
 import android.content.Context
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.example.expensetracker.ReportExporter
-import kotlinx.coroutines.launch
+import com.example.expensetracker.helpers.ReportExporter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

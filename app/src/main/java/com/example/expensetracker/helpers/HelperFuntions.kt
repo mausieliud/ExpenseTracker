@@ -1,8 +1,7 @@
-package com.example.expensetracker
+package com.example.expensetracker.helpers
 
 import androidx.compose.ui.graphics.Color
 import com.example.expensetracker.data.entity.Expense
-import com.example.expensetracker.mpesa.MPesaTransaction
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId

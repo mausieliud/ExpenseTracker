@@ -1,4 +1,4 @@
-package com.example.expensetracker.mpesa
+package com.example.expensetracker.mpesa.classes
 
 data class MPesaTransaction(
     val transactionId: String,

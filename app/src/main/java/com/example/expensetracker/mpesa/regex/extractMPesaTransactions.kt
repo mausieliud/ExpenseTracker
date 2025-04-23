@@ -1,9 +1,14 @@
-package com.example.expensetracker.mpesa
+package com.example.expensetracker.mpesa.regex
 
 import android.provider.Telephony
 import android.util.Log
+import com.example.expensetracker.mpesa.classes.MPesaTransaction
 import java.util.regex.Pattern
 
+
+/**
+ * Regex code that extracts the details from the messages
+ */
 fun extractMPesaTransactions(context: android.content.Context): Pair<List<MPesaTransaction>, String> {
     val transactions = mutableListOf<MPesaTransaction>()
     val debugInfo = StringBuilder()

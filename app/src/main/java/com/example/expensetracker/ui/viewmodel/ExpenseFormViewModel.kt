@@ -8,9 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.database.BudgetDatabase
 import com.example.expensetracker.data.entity.Expense
 import com.example.expensetracker.event.ExpenseFormEvent
-import com.example.expensetracker.mpesa.MPesaTransaction
+import com.example.expensetracker.mpesa.classes.MPesaTransaction
 import com.example.expensetracker.state.ExpenseFormState
-import com.example.expensetracker.mpesa.toExpense
+import com.example.expensetracker.mpesa.regex.toExpense
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
