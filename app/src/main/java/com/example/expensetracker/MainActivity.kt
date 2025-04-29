@@ -27,6 +27,9 @@ import com.example.expensetracker.ui.viewmodel.ExpenseFormViewModel
 import com.example.expensetracker.ui.viewmodel.ReportViewModel
 import com.example.expensetracker.mpesa.screen.MPesaMessageParserScreen
 
+/**
+ * Also functions as nav controller
+ */
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "ExpenseTracker"
@@ -111,7 +114,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // Use the same shared ViewModel for M-Pesa parser
+                        // Use the same shared ViewModel for M-Pesa parser(expense view model)
                         composable("mpesa_parser") {
                             MPesaMessageParserScreen(
                                 onNavigateBack = { navController.popBackStack() },
